@@ -55,10 +55,16 @@ class AudioDataset(Dataset):
                 for file_name in os.listdir(class_path):
                     # selecting only elements from given set
                     file_path = os.path.normpath(os.path.join(full_class_name, file_name))
-                    if file_path in AudioDataset.val_paths and self.set_type != AudioDataset.VAL:
+                    file_in_val = file_path in AudioDataset.val_paths
+                    file_in_test = file_path in AudioDataset.test_paths
+
+                    if file_in_val and self.set_type != AudioDataset.VAL:
                         continue
-                    if file_path in AudioDataset.test_paths and self.set_type != AudioDataset.TEST:
+                    if file_in_test and self.set_type != AudioDataset.TEST:
                         continue
+                    if not (file_in_val or file_in_test) and self.set_type != AudioDataset.TRAIN:
+                        continue
+
                     if file_name.endswith(".wav"):
                         self.samples.append((os.path.join(class_path, file_name), idx))
 
@@ -107,6 +113,7 @@ def main():
     print(np.sum(counts))
 
     print(dataset.samples[0])
+    print(len(dataset.samples))
 
 
 def time_test(loader):
