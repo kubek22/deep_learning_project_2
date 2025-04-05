@@ -1,0 +1,24 @@
+# num_workers=16, pin_memory=True, MAX_ITER=100
+# basic: 293.0725119113922
+# cuda: 287.10940980911255
+# non - blocking cuda: 273.09916496276855
+
+# num_workers=16, pin_memory=True, MAX_ITER=10
+# basic: 110.90361833572388
+# cuda: 116.81165981292725
+# non - blocking cuda: 141.61864185333252
+
+# num_workers=0, pin_memory=True, MAX_ITER=10
+# basic: 20.03422474861145
+# cuda: 20.08714985847473
+# non - blocking cuda: 24.151478052139282
+
+# num_workers=4, pin_memory=True, MAX_ITER=10
+# basic: 46.375115394592285
+# cuda: 49.99321103096008
+# non - blocking cuda: 36.629881858825684
+
+# num_workers=4, pin_memory=False, MAX_ITER=10
+# basic: 34.82700753211975
+# cuda: 27.702683925628662
+# non - blocking cuda: 36.049803733825684
