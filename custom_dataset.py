@@ -1,4 +1,5 @@
 import os
+import torch
 import numpy as np
 import torchaudio
 import torchaudio.transforms as T
@@ -83,15 +84,22 @@ class AudioDataset(Dataset):
             change_size = T.Resample(orig_freq=waveform.size(1), new_freq=self.audio_length)
             waveform = change_size(waveform)
 
+        # changing amplitudes into spectrogram
+        spectrogram = T.Spectrogram()(waveform)
+        log_spec = torch.log(spectrogram + 1e-10)
+
         # Apply transformation if available
         if self.transform:
-            waveform = self.transform(waveform)
+            log_spec = self.transform(log_spec)
 
-        return waveform, label
+        return log_spec, label
 
 
 def main():
     # main function is required for multiprocessing
+    compute_train_stats()
+
+def dataset_test():
     data_path = "data/train/audio"
     dataset = AudioDataset(data_path, set_type=AudioDataset.TRAIN)
     loader = DataLoader(
@@ -114,6 +122,43 @@ def main():
 
     print(dataset.samples[0])
     print(len(dataset.samples))
+
+    wave = dataset.__getitem__(0)[0]
+    print(wave)
+    print(wave.shape)
+    print(torch.max(wave), torch.min(wave))
+
+
+def compute_train_stats():
+    print("starting processing...")
+    data_path = "data/train/audio"
+    dataset = AudioDataset(data_path, set_type=AudioDataset.TRAIN)
+    print("creating dataloader...")
+    train_loader = DataLoader(
+        dataset,
+        batch_size=512,
+        shuffle=False,
+        num_workers=0,
+        pin_memory=True,
+    )
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    sum = torch.tensor(0.0, device=device)
+    num_pixels = torch.tensor(0.0, device=device)
+
+    for log_spec, _ in train_loader:
+        print("new batch processing...")
+        log_spec = log_spec.to(device)
+        log_spec = log_spec.view(log_spec.size(0), -1)
+
+        sum += log_spec.sum()
+        num_pixels += log_spec.numel()
+
+    mean = sum / num_pixels
+
+    print(mean)
+    # print(std)
+
 
 
 def time_test(loader):
