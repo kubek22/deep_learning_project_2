@@ -12,7 +12,7 @@ def main():
         dataset,
         batch_size=32,
         shuffle=False,
-        num_workers=0,
+        num_workers=16,
         pin_memory=True,
     )
 
@@ -31,11 +31,11 @@ def main():
 
     # Computed results:
     # mean: -10.408944129943848
-    # std: 5.073166847229004
+    # std: 5.170785427093506
 
 def count_mean(train_loader, device):
     sum = torch.tensor(0.0, device=device)
-    num_pixels = torch.tensor(0.0, device=device)
+    n = torch.tensor(0.0, device=device)
 
     for log_spec, _ in train_loader:
         print("new batch processing...")
@@ -43,14 +43,14 @@ def count_mean(train_loader, device):
         log_spec = log_spec.view(log_spec.size(0), -1)
 
         sum += log_spec.sum()
-        num_pixels += log_spec.numel()
+        n += log_spec.numel()
 
-    mean = sum / num_pixels
+    mean = sum / n
     return mean
 
 def count_std(train_loader, device, mean):
     sum = torch.tensor(0.0, device=device)
-    num_pixels = torch.tensor(0.0, device=device)
+    n = torch.tensor(0.0, device=device)
 
     for log_spec, _ in train_loader:
         print("new batch processing...")
@@ -60,9 +60,9 @@ def count_std(train_loader, device, mean):
         elements = torch.pow(log_spec - mean, 2)
 
         sum += elements.sum()
-        num_pixels += log_spec.numel()
+        n += log_spec.numel()
 
-    std = torch.sqrt(sum / num_pixels-1)
+    std = torch.sqrt(sum / (n-1))
     return std
 
 

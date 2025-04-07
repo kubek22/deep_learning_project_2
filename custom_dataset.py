@@ -1,14 +1,12 @@
 import os
+import warnings
 import torch
-import numpy as np
 import torchaudio
 import torchaudio.transforms as T
-from jupyterlab.utils import deprecated
 from torch.utils.data import Dataset
-from torch.utils.data import DataLoader
 
 
-@deprecated
+# deprecated
 class AudioDataset(Dataset):
     TRAIN = "train"
     VAL = "val"
@@ -30,6 +28,13 @@ class AudioDataset(Dataset):
     test_paths = set(test_paths)
 
     def __init__(self, root_dir, transform=None, audio_length=AUDIO_LENGTH, set_type=TRAIN):
+        warnings.warn(
+            "AudioDataset is deprecated."
+            "Please use SpectrogramDataset instead.",
+            category=DeprecationWarning,
+            stacklevel=2
+        )
+
         self.root_dir = root_dir
         self.transform = transform
         self.samples = []
@@ -108,7 +113,7 @@ class SpectrogramDataset(Dataset):
     VAL_LIST_PATH = "data/train/validation_list.txt"
     TEST_LIST_PATH = "data/train/testing_list.txt"
     MEAN = -10.408944129943848
-    STD = 5.073166847229004
+    STD = 5.170785427093506
 
     with open(VAL_LIST_PATH, 'r') as f:
         val_paths = [os.path.normpath(line.strip()) for line in f.readlines()]
@@ -176,120 +181,3 @@ class SpectrogramDataset(Dataset):
         log_spec_norm = self.tensors[idx]
         return log_spec_norm, label
 
-
-def main():
-    # main function is required for multiprocessing
-    compute_train_stats()
-
-def dataset_test():
-    data_path = "data/train/audio"
-    dataset = AudioDataset(data_path, set_type=AudioDataset.TRAIN)
-    loader = DataLoader(
-        dataset,
-        batch_size=32,
-        shuffle=True,
-        num_workers=4,
-        pin_memory=False,
-    )
-
-    labels = []
-    for x, y in dataset.samples:
-        labels.append(y)
-    labels = np.array(labels)
-
-    values, counts = np.unique(labels, return_counts=True)
-    value_counts = dict(zip(values, counts))
-    print(value_counts)
-    print(np.sum(counts))
-
-    print(dataset.samples[0])
-    print(len(dataset.samples))
-
-    wave = dataset.__getitem__(0)[0]
-    print(wave)
-    print(wave.shape)
-    print(torch.max(wave), torch.min(wave))
-
-
-def compute_train_stats():
-    print("starting processing...")
-    data_path = "data/train/audio"
-    dataset = AudioDataset(data_path, set_type=AudioDataset.TRAIN)
-    print("creating dataloader...")
-    train_loader = DataLoader(
-        dataset,
-        batch_size=512,
-        shuffle=False,
-        num_workers=0,
-        pin_memory=True,
-    )
-
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    sum = torch.tensor(0.0, device=device)
-    num_pixels = torch.tensor(0.0, device=device)
-
-    for log_spec, _ in train_loader:
-        print("new batch processing...")
-        log_spec = log_spec.to(device)
-        log_spec = log_spec.view(log_spec.size(0), -1)
-
-        sum += log_spec.sum()
-        num_pixels += log_spec.numel()
-
-    mean = sum / num_pixels
-
-    print(mean)
-    # print(std)
-
-
-
-def time_test(loader):
-    import time
-
-    MAX_ITER = 10
-
-    # basic
-    time_start = time.time()
-    i = 0
-    for waveforms, labels in loader:
-        print(waveforms.shape)
-        print(labels)
-        i += 1
-        if i >= MAX_ITER:
-            break
-    time_end = time.time()
-    time_basic = time_end - time_start
-
-    # cuda
-    time_start = time.time()
-    i = 0
-    for waveforms, labels in loader:
-        waveforms, labels = waveforms.cuda(), labels.cuda()
-        print(waveforms.shape)
-        print(labels)
-        i += 1
-        if i >= MAX_ITER:
-            break
-    time_end = time.time()
-    time_cuda = time_end - time_start
-
-    # non-blocking cuda
-    time_start = time.time()
-    i = 0
-    for waveforms, labels in loader:
-        waveforms, labels = waveforms.cuda(non_blocking=True), labels.cuda(non_blocking=True)
-        print(waveforms.shape)
-        print(labels)
-        i += 1
-        if i >= MAX_ITER:
-            break
-    time_end = time.time()
-    time_cuda2 = time_end - time_start
-
-    print()
-    print(f"basic: {time_basic}")
-    print(f"cuda: {time_cuda}")
-    print(f"non-blocking cuda: {time_cuda2}")
-
-if __name__ == "__main__":
-    main()
