@@ -1,12 +1,12 @@
 import torch
 from torch.utils.data import DataLoader
-from custom_dataset import AudioDataset
+from custom_dataset import SpectrogramDataset
 
 
 def main():
     print("starting processing...")
-    data_path = "data/train/audio"
-    dataset = AudioDataset(data_path, set_type=AudioDataset.TRAIN)
+    data_path = "data/train/audio_transformed"
+    dataset = SpectrogramDataset(data_path, set_type=SpectrogramDataset.TRAIN)
     print("creating dataloader...")
     train_loader = DataLoader(
         dataset,
@@ -24,6 +24,14 @@ def main():
 
     std = count_std(train_loader, device, mean)
     print(std)
+
+    print("\nComputed results:")
+    print(f"mean: {mean}")
+    print(f"std: {std}")
+
+    # Computed results:
+    # mean: -10.408944129943848
+    # std: 5.073166847229004
 
 def count_mean(train_loader, device):
     sum = torch.tensor(0.0, device=device)
