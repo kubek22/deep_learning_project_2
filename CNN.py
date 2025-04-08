@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class AudioClassifier(nn.Module):
-    def __init__(self, num_classes, drop=0.3):
+    def __init__(self, num_classes=11, drop=0.3):
         super(AudioClassifier, self).__init__()
         
         self.conv1 = nn.Conv1d(in_channels=1, out_channels=512, kernel_size=240, stride=15)
@@ -49,13 +49,13 @@ class AudioClassifier(nn.Module):
         x = x.permute(0, 2, 1)
         x, _ = self.bilstm1(x)
         x = self.drop4(x)
-        x = self.bn4(x.permute(0, 2, 1)) 
+        x = self.bn4(x.permute(0, 2, 1))
         x = x.permute(0, 2, 1)
 
         x, _ = self.bilstm2(x)
         x = self.drop5(x)
         x = self.bn5(x.permute(0, 2, 1))
-        
+
         x = self.global_pool(x)
         x = x.squeeze(2)
 

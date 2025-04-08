@@ -26,6 +26,7 @@ def repeat_training(n, init_model, lr, model_path, history_path, epochs, train_d
 
         print(f"training iteration: {i+1} of {n}")
         criterion = nn.CrossEntropyLoss()
+        # TODO enable modifying optimizer (it must be initialized after every training)
         optimizer = optim.Adam(model.parameters(), lr=lr, betas=betas, weight_decay=weight_decay)
 
         model_path_idx = add_prefix_to_path(model_path, i+1)
