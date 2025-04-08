@@ -6,11 +6,11 @@ class AudioClassifier(nn.Module):
     def __init__(self, num_classes=11, drop=0.3):
         super(AudioClassifier, self).__init__()
         
-        self.conv1 = nn.Conv1d(in_channels=1, out_channels=512, kernel_size=240, stride=15)
+        self.conv1 = nn.Conv1d(in_channels=81, out_channels=512, kernel_size=5, stride=1)
         self.bn1 = nn.BatchNorm1d(512)
         self.drop1 = nn.Dropout(drop)
         
-        self.conv2 = nn.Conv1d(in_channels=512, out_channels=512, kernel_size=5, stride=1)
+        self.conv2 = nn.Conv1d(in_channels=512, out_channels=512, kernel_size=3, stride=1)
         self.bn2 = nn.BatchNorm1d(512)
         self.drop2 = nn.Dropout(drop)
         
@@ -40,13 +40,15 @@ class AudioClassifier(nn.Module):
         self.fc_out = nn.Linear(128, num_classes)
 
     def forward(self, x):
-        x = x.permute(0, 2, 1)
+        # x: (batch, 1, 201, 81)
+        x = x.squeeze(1)          # (batch, 201, 81)
+        x = x.permute(0, 2, 1)    # (batch, 81, 201)
 
         x = self.drop1(self.bn1(self.conv1(x)))    
         x = self.drop2(self.bn2(self.conv2(x)))   
         x = self.drop3(self.bn3(self.conv3(x))) 
 
-        x = x.permute(0, 2, 1)
+        x = x.permute(0, 2, 1)    # (batch, seq_len, features=256)
         x, _ = self.bilstm1(x)
         x = self.drop4(x)
         x = self.bn4(x.permute(0, 2, 1))
