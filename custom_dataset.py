@@ -101,6 +101,12 @@ class AudioDataset(Dataset):
 
         return log_spec, label
 
+
+def get_paths(file):
+    with open(file, 'r') as f:
+        paths = [os.path.splitext(os.path.normpath(line.strip()))[0] + ".pt" for line in f.readlines()]
+    return paths
+
 class SpectrogramDataset(Dataset):
     TRAIN = "train"
     VAL = "val"
@@ -115,13 +121,8 @@ class SpectrogramDataset(Dataset):
     MEAN = -10.408944129943848
     STD = 5.170785427093506
 
-    with open(VAL_LIST_PATH, 'r') as f:
-        val_paths = [os.path.normpath(line.strip()) for line in f.readlines()]
-    val_paths = set(val_paths)
-
-    with open(TEST_LIST_PATH, 'r') as f:
-        test_paths = [os.path.normpath(line.strip()) for line in f.readlines()]
-    test_paths = set(test_paths)
+    val_paths = get_paths(VAL_LIST_PATH)
+    test_paths = get_paths(TEST_LIST_PATH)
 
     def __init__(self, root_dir, transform=None, audio_length=AUDIO_LENGTH, set_type=TRAIN):
         self.root_dir = root_dir
@@ -137,16 +138,16 @@ class SpectrogramDataset(Dataset):
         for _, class_name in enumerate(sorted(os.listdir(root_dir))):
             idx = last_idx
             full_class_name = class_name # to capture real unknown class name
-            if class_name == AudioDataset.NOISE_DIR:
+            if class_name == self.NOISE_DIR:
                 # ignoring noise directory
                 continue
             class_path = os.path.join(root_dir, class_name)
             if os.path.isdir(class_path):
-                if class_name not in AudioDataset.CLASSES:
+                if class_name not in self.CLASSES:
                     # unknown class
-                    class_name = AudioDataset.UNKNOWN
+                    class_name = self.UNKNOWN
                     # for unknown, get proper idx (one idx for all unknown)
-                    idx = AudioDataset.UNKNOWN_IDX
+                    idx = self.UNKNOWN_IDX
                 else:
                     last_idx += 1
                 if class_name not in self.label_map:
@@ -155,14 +156,14 @@ class SpectrogramDataset(Dataset):
                 for file_name in os.listdir(class_path):
                     # selecting only elements from given set
                     file_path = os.path.normpath(os.path.join(full_class_name, file_name))
-                    file_in_val = file_path in AudioDataset.val_paths
-                    file_in_test = file_path in AudioDataset.test_paths
+                    file_in_val = file_path in self.val_paths
+                    file_in_test = file_path in self.test_paths
 
-                    if file_in_val and self.set_type != AudioDataset.VAL:
+                    if file_in_val and self.set_type != self.VAL:
                         continue
-                    if file_in_test and self.set_type != AudioDataset.TEST:
+                    if file_in_test and self.set_type != self.TEST:
                         continue
-                    if not (file_in_val or file_in_test) and self.set_type != AudioDataset.TRAIN:
+                    if not (file_in_val or file_in_test) and self.set_type != self.TRAIN:
                         continue
 
                     if file_name.endswith(".pt"):
@@ -180,4 +181,3 @@ class SpectrogramDataset(Dataset):
             return log_spec_norm, label
         log_spec_norm = self.tensors[idx]
         return log_spec_norm, label
-

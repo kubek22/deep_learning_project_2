@@ -1,5 +1,4 @@
 import torch
-import math
 
 
 def training_epoch(model, dataloader, optimizer, criterion, device):
@@ -8,7 +7,7 @@ def training_epoch(model, dataloader, optimizer, criterion, device):
     correct = 0
     n = 0
     for x, y in dataloader:
-        x, y = x.to(device), y.to(device)
+        x, y = x.to(device, non_blocking=True), y.to(device, non_blocking=True)
         output = model(x)
         loss = criterion(output, y)
 
@@ -27,27 +26,28 @@ def training_epoch(model, dataloader, optimizer, criterion, device):
 
 
 def evaluate(model, dataloader, criterion, device):
+    total_loss = 0
     correct = 0
     n = 0
     model.eval()
     with torch.no_grad():
         for x, y in dataloader:
-            x, y = x.to(device), y.to(device)
+            x, y = x.to(device, non_blocking=True), y.to(device, non_blocking=True)
             output = model(x)
             _, predicted = torch.max(output, 1)
 
             loss = criterion(output, y)
-            batch_loss = loss.item()
+            total_loss += loss.item()
             n += y.size(0)
             correct += predicted.eq(y).sum().item()
 
-    avg_loss = batch_loss / n
+    avg_loss = total_loss / n
     accuracy = 100 * correct / n
     return accuracy, avg_loss
 
 
 def train(epochs, model, train_dataloader, val_dataloader, optimizer, criterion, device, model_path,
-          tolerance=math.inf):
+          tolerance=torch.inf):
     train_accuracy_list, train_loss_list = [], []
     val_accuracy_list, val_loss_list = [], []
     best_loss = float('inf')
