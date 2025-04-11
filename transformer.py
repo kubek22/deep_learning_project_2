@@ -15,7 +15,7 @@ class SpeechTransformer(nn.Module):
 
     def forward(self, x):
         x = x.squeeze(1) 
-        x = self.input_projection(x) 
+        x = self.input_projection(x)
         x = x + self.positional_encoding 
         x = x.permute(1, 0, 2)
         x = self.transformer_encoder(x)

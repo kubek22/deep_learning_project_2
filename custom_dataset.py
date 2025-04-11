@@ -1,10 +1,19 @@
 import os
 import warnings
+import numpy as np
 import torch
 import torchaudio
 import torchaudio.transforms as T
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, WeightedRandomSampler
 
+
+def create_sampler(train_dataset):
+    train_labels = np.array([y for x, y in train_dataset.samples])
+    unique, counts = np.unique(train_labels, return_counts=True)
+    weights = 1 / torch.tensor(counts, dtype=torch.float)
+    sample_weights = weights[train_labels]
+    sampler = WeightedRandomSampler(sample_weights, len(sample_weights), replacement=True)
+    return sampler
 
 # deprecated
 class AudioDataset(Dataset):
@@ -181,3 +190,33 @@ class SpectrogramDataset(Dataset):
             return log_spec_norm, label
         log_spec_norm = self.tensors[idx]
         return log_spec_norm, label
+
+
+class BinaryDataset(SpectrogramDataset):
+    SIGNAL_IDX = 0
+    NO_SIGNAL_IDX = 1
+    def __init__(self, root_dir, transform=None, audio_length=SpectrogramDataset.AUDIO_LENGTH, set_type=SpectrogramDataset.TRAIN):
+        super(BinaryDataset, self).__init__(root_dir, transform=transform, audio_length=audio_length, set_type=set_type)
+
+        # updating signal indexes
+        for i in range(len(self.samples)):
+            file_path, idx = self.samples[i]
+            if idx != self.UNKNOWN_IDX:
+                idx = self.SIGNAL_IDX
+                self.samples[i] = (file_path, idx)
+        # updating noise indexes
+        for i in range(len(self.samples)):
+            file_path, idx = self.samples[i]
+            if idx == self.UNKNOWN_IDX:
+                idx = self.NO_SIGNAL_IDX
+                self.samples[i] = (file_path, idx)
+
+        # updating label mapping
+        for class_name, idx in self.label_map.items():
+            if idx != self.UNKNOWN_IDX:
+                idx = self.SIGNAL_IDX
+                self.label_map[class_name] = idx
+        for class_name, idx in self.label_map.items():
+            if idx == self.UNKNOWN_IDX:
+                idx = self.NO_SIGNAL_IDX
+                self.label_map[class_name] = idx
