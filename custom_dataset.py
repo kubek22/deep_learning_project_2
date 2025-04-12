@@ -1,5 +1,6 @@
 import os
 import warnings
+import random
 import numpy as np
 import torch
 import torchaudio
@@ -133,7 +134,7 @@ class SpectrogramDataset(Dataset):
     val_paths = get_paths(VAL_LIST_PATH)
     test_paths = get_paths(TEST_LIST_PATH)
 
-    def __init__(self, root_dir, transform=None, audio_length=AUDIO_LENGTH, set_type=TRAIN):
+    def __init__(self, root_dir, transform=None, audio_length=AUDIO_LENGTH, set_type=TRAIN, augmentation=False, augmented_fraction=0.3):
         self.root_dir = root_dir
         self.transform = transform
         self.samples = []
@@ -142,15 +143,25 @@ class SpectrogramDataset(Dataset):
         self.label_map = {}
         # keeping tensors in memory
         self.tensors = {}
+        # noise tensors
+        self.augmentation = augmentation
+        self.augmented_fraction = augmented_fraction
+        self.noise = []
 
         last_idx = 0
         for _, class_name in enumerate(sorted(os.listdir(root_dir))):
             idx = last_idx
             full_class_name = class_name # to capture real unknown class name
-            if class_name == self.NOISE_DIR:
-                # ignoring noise directory
-                continue
             class_path = os.path.join(root_dir, class_name)
+
+            if class_name == self.NOISE_DIR:
+                for file_name in os.listdir(class_path):
+                    if file_name.endswith(".pt"):
+                        file_path = os.path.join(class_path, file_name)
+                        log_noise_spec = torch.load(file_path)
+                        self.noise.append(log_noise_spec)
+                continue
+
             if os.path.isdir(class_path):
                 if class_name not in self.CLASSES:
                     # unknown class
@@ -187,8 +198,27 @@ class SpectrogramDataset(Dataset):
             log_spec = torch.load(file_path)
             log_spec_norm = (log_spec - SpectrogramDataset.MEAN) / SpectrogramDataset.STD
             self.tensors[idx] = log_spec_norm
-            return log_spec_norm, label
-        log_spec_norm = self.tensors[idx]
+        else:
+            log_spec_norm = self.tensors[idx]
+
+        if self.augmentation and random.random() < self.augmented_fraction:
+            # transforming tensors to original spectrograms
+            spec = torch.exp(log_spec_norm * SpectrogramDataset.STD + SpectrogramDataset.MEAN)
+            log_noise = random.choice(self.noise)
+            noise = torch.exp(log_noise)
+
+            # cutting out noise segment
+            start_idx = torch.randint(0, noise.size(2) - spec.size(2), (1,)).item()
+            noise_segment = noise[:, :, start_idx:start_idx + spec.size(2)]
+
+            # combining with noise
+            noise_factor = random.uniform(0, 1)
+            combined_spec = spec + noise_factor * noise_segment
+
+            # transforming and standardizing
+            log_combined_spec = torch.log(combined_spec + 1e-10)
+            log_spec_norm = (log_combined_spec - SpectrogramDataset.MEAN) / SpectrogramDataset.STD
+
         return log_spec_norm, label
 
 
