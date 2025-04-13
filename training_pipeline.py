@@ -6,7 +6,19 @@ import os
 from serialization import save
 from training_functions import train, evaluate
 import math
+import random
+import numpy as np
 
+
+def set_seed(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+
+def worker_init_fn(worker_id):
+    seed = torch.initial_seed() % 2 ** 32
+    set_seed(seed)
 
 def add_prefix_to_path(path, prefix):
     dirpath, filename = os.path.split(path)
@@ -50,11 +62,12 @@ def repeat_training(n, init_model, lr, model_path, history_path, epochs, train_d
         best_model.to(device)
 
         best_model.load_state_dict(torch.load(model_path_idx, weights_only=True))
-        test_accuracy, test_avg_loss = evaluate(best_model, test_dataloader, criterion, device)
-        print(f"test loss: {test_avg_loss}, test accuracy: {test_accuracy}")
+        test_accuracy, test_avg_loss, test_bal_acc = evaluate(best_model, test_dataloader, criterion, device)
+        print(f"test loss: {test_avg_loss}, test accuracy: {test_accuracy}, test balanced accuracy: {test_bal_acc}")
 
         training_history["accuracy_test"] = test_accuracy
         training_history["loss_test"] = test_avg_loss
+        training_history["balanced_accuracy_test"] = test_bal_acc
 
         save(training_history, history_path_idx)
         print("training history saved\n")

@@ -8,10 +8,17 @@ import torchaudio.transforms as T
 from torch.utils.data import Dataset, WeightedRandomSampler
 
 
-def create_sampler(train_dataset):
+def create_sampler(train_dataset, alpha=1):
+    # alpha parameter is responsible for balancing sample weight between classes
+    # its value should be in [0, 1] interval
+    # for alpha=0, all the samples have equal weight (no oversampling applied)
+    # for alpha=1, all the classes are fully balanced
+
     train_labels = np.array([y for x, y in train_dataset.samples])
     unique, counts = np.unique(train_labels, return_counts=True)
-    weights = 1 / torch.tensor(counts, dtype=torch.float)
+    # weights = 1 / torch.tensor(counts, dtype=torch.float)
+    # parametrized weights
+    weights = 1 / torch.pow(torch.tensor(counts, dtype=torch.float), alpha)
     sample_weights = weights[train_labels]
     sampler = WeightedRandomSampler(sample_weights, len(sample_weights), replacement=True)
     return sampler
@@ -134,7 +141,7 @@ class SpectrogramDataset(Dataset):
     val_paths = get_paths(VAL_LIST_PATH)
     test_paths = get_paths(TEST_LIST_PATH)
 
-    def __init__(self, root_dir, transform=None, audio_length=AUDIO_LENGTH, set_type=TRAIN, augmentation=False, augmented_fraction=0.3):
+    def __init__(self, root_dir, transform=None, audio_length=AUDIO_LENGTH, set_type=TRAIN, augmentation=False, augmented_fraction=0.3, use_unknown=True):
         self.root_dir = root_dir
         self.transform = transform
         self.samples = []
@@ -147,6 +154,8 @@ class SpectrogramDataset(Dataset):
         self.augmentation = augmentation
         self.augmented_fraction = augmented_fraction
         self.noise = []
+        # determines using unknown classes
+        self.use_unknown = use_unknown
 
         last_idx = 0
         for _, class_name in enumerate(sorted(os.listdir(root_dir))):
@@ -154,6 +163,7 @@ class SpectrogramDataset(Dataset):
             full_class_name = class_name # to capture real unknown class name
             class_path = os.path.join(root_dir, class_name)
 
+            # loading noise tensors
             if class_name == self.NOISE_DIR:
                 for file_name in os.listdir(class_path):
                     if file_name.endswith(".pt"):
@@ -165,6 +175,8 @@ class SpectrogramDataset(Dataset):
             if os.path.isdir(class_path):
                 if class_name not in self.CLASSES:
                     # unknown class
+                    if not self.use_unknown:
+                        continue
                     class_name = self.UNKNOWN
                     # for unknown, get proper idx (one idx for all unknown)
                     idx = self.UNKNOWN_IDX
