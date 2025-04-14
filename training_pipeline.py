@@ -3,11 +3,14 @@ import torch.nn as nn
 import torch.optim as optim
 import time
 import os
-from serialization import save
+from serialization import save, load
 from training_functions import train, evaluate
 import math
 import random
 import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 
 def set_seed(seed):
@@ -32,7 +35,7 @@ def repeat_training(n, init_model, lr, model_path, history_path, epochs, train_d
         if not dropout:
             model = init_model()
         else:
-            model = init_model(dropout)
+            model = init_model(dropout=dropout)
 
         model.to(device)
 
@@ -57,7 +60,7 @@ def repeat_training(n, init_model, lr, model_path, history_path, epochs, train_d
         if not dropout:
             best_model = init_model()
         else:
-            best_model = init_model(dropout)
+            best_model = init_model(dropout=dropout)
 
         best_model.to(device)
 
@@ -71,3 +74,37 @@ def repeat_training(n, init_model, lr, model_path, history_path, epochs, train_d
 
         save(training_history, history_path_idx)
         print("training history saved\n")
+
+def plot_results(history_dir, x_values, x_label, use_balanced_accuracy=False):
+    data = []
+    # for history_dir in history_dir:
+    for dir in os.listdir(history_dir):
+        accuracy_results = []
+        balanced_accuracy_results = []
+        dir_path = os.path.join(history_dir, dir)
+        for file_name in os.listdir(dir_path):
+            if file_name.endswith(".pkl"):
+                history_path = os.path.join(dir_path, file_name)
+                history = load(history_path)
+
+                accuracy_test = history["accuracy_test"]
+                accuracy_results.append(accuracy_test)
+
+                balanced_accuracy_test = history["balanced_accuracy_test"]
+                balanced_accuracy_results.append(balanced_accuracy_test)
+
+        data.append(balanced_accuracy_results if use_balanced_accuracy else accuracy_results)
+
+    y_label = "test balanced accuracy" if use_balanced_accuracy else "test accurac"
+    plot_data = []
+    for i in range(len(x_values)):
+        param = x_values[i]
+        results = data[i]
+        for res in results:
+            plot_data.append({x_label: param, y_label: res})
+
+    df = pd.DataFrame(plot_data)
+
+    plt.figure(figsize=(8, 5))
+    sns.boxplot(x=x_label, y=y_label, data=df)
+    plt.show()
