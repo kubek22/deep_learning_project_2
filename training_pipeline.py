@@ -30,7 +30,8 @@ def add_prefix_to_path(path, prefix):
     new_path = os.path.join(dirpath, file)
     return new_path
 
-def repeat_training(n, init_model, lr, model_path, history_path, epochs, train_dataloader, val_dataloader, test_dataloader, device, dropout=False, betas=(0.9, 0.999), weight_decay=0, tolerance=math.inf):
+def repeat_training(n, init_model, lr, model_path, history_path, epochs, train_dataloader, val_dataloader, test_dataloader, device, dropout=False, betas=(0.9, 0.999), weight_decay=0, tolerance=math.inf,
+                    label_smoothing=0):
     for i in range(n):
         if not dropout:
             model = init_model()
@@ -40,7 +41,7 @@ def repeat_training(n, init_model, lr, model_path, history_path, epochs, train_d
         model.to(device)
 
         print(f"training iteration: {i+1} of {n}")
-        criterion = nn.CrossEntropyLoss()
+        criterion = nn.CrossEntropyLoss(label_smoothing=label_smoothing)
         # TODO enable modifying optimizer (it must be initialized after every training)
         optimizer = optim.Adam(model.parameters(), lr=lr, betas=betas, weight_decay=weight_decay)
 
