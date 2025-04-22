@@ -233,12 +233,11 @@ class SpectrogramDataset(Dataset):
 
         return log_spec_norm, label
 
-
 class BinaryDataset(SpectrogramDataset):
     SIGNAL_IDX = 0
     NO_SIGNAL_IDX = 1
-    def __init__(self, root_dir, transform=None, audio_length=SpectrogramDataset.AUDIO_LENGTH, set_type=SpectrogramDataset.TRAIN):
-        super(BinaryDataset, self).__init__(root_dir, transform=transform, audio_length=audio_length, set_type=set_type)
+    def __init__(self, root_dir, transform=None, audio_length=SpectrogramDataset.AUDIO_LENGTH, set_type=SpectrogramDataset.TRAIN, augmentation=False, augmented_fraction=0.3, use_unknown=True):
+        super(BinaryDataset, self).__init__(root_dir, transform=transform, audio_length=audio_length, set_type=set_type, augmentation=augmentation, augmented_fraction=augmented_fraction, use_unknown=use_unknown)
 
         # updating signal indexes
         for i in range(len(self.samples)):
